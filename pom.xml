@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.wso2.support.tomcat.ext</groupId>
+    <artifactId>org.wso2.support.tomcat.ext.payload.valve</artifactId>
+    <version>1.0.0</version>
+    <packaging>bundle</packaging>
+    <name>WSO2 Support - Payload Logging Valve</name>
+    <description>
+        Standalone Tomcat valve for WSO2 Identity Server 7.2.0 that logs the request/response of
+        configurable endpoints. Deployed as an OSGi bundle in repository/components/dropins and
+        wired in via the [catalina.valves.*.properties] section of deployment.toml. Does not patch
+        or replace any product component.
+    </description>
+
+    <properties>
+        <!-- Matches tomcat_9.0.102.wso2v1.jar shipped in IS 7.2.0. -->
+        <tomcat.version>9.0.102</tomcat.version>
+        <commons.logging.version>1.2</commons.logging.version>
+        <maven.bundle.plugin.version>5.1.9</maven.bundle.plugin.version>
+        <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!--
+          Provided by the IS runtime (tomcat_9.0.102.wso2v1.jar). tomcat-catalina transitively
+          brings tomcat-coyote / tomcat-util / tomcat-servlet-api, which is where
+          org.apache.coyote.*, org.apache.tomcat.util.net.* and javax.servlet.* come from.
+        -->
+        <dependency>
+            <groupId>org.apache.tomcat</groupId>
+            <artifactId>tomcat-catalina</artifactId>
+            <version>${tomcat.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>${commons.logging.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin.version}</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <version>${maven.bundle.plugin.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
+                        <Bundle-Name>${project.artifactId}</Bundle-Name>
+                        <!--
+                          MANDATORY. The catalina-server.xml Digester runs inside the `tomcat`
+                          OSGi bundle, which resolves valve classes through its
+                          `DynamicImport-Package: *` header. A dynamic import can only bind to a
+                          package another bundle EXPORTS, so this package must be exported or the
+                          valve will fail with ClassNotFoundException at server startup.
+                        -->
+                        <Export-Package>
+                            org.wso2.support.tomcat.ext.valves
+                        </Export-Package>
+                        <!--
+                          Disable bnd's OSGi "contract" handling. Left on, bnd emits
+                          Require-Capability: osgi.contract=JavaServlet, and no bundle in IS 7.2.0
+                          provides that capability, so the bundle would never resolve.
+                        -->
+                        <_contract>!*</_contract>
+                        <Import-Package>
+                            <!--
+                              The tomcat-servlet-api_9.0.102.wso2v1 bundle exports javax.servlet at
+                              version 2.6.0, not 3.x/4.x. This is the same range that IS's own
+                              org.wso2.carbon.identity.cors.valve bundle imports.
+                            -->
+                            javax.servlet; version="[2.6,3)",
+                            org.apache.catalina; version="[9.0,10)",
+                            org.apache.catalina.connector; version="[9.0,10)",
+                            org.apache.catalina.valves; version="[9.0,10)",
+                            org.apache.coyote; version="[9.0,10)",
+                            org.apache.tomcat.util.net; version="[9.0,10)",
+                            org.apache.commons.logging; version="[1.2,2)",
+                            *;resolution:=optional
+                        </Import-Package>
+                    </instructions>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
