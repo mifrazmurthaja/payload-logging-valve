@@ -7,22 +7,32 @@
 
     <groupId>org.wso2.support.tomcat.ext</groupId>
     <artifactId>org.wso2.support.tomcat.ext.payload.valve</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <packaging>bundle</packaging>
     <name>WSO2 Support - Payload Logging Valve</name>
     <description>
-        Standalone Tomcat valve for WSO2 Identity Server 7.2.0 that logs the request/response of
-        configurable endpoints. Deployed as an OSGi bundle in repository/components/dropins and
-        wired in via the [catalina.valves.*.properties] section of deployment.toml. Does not patch
-        or replace any product component.
+        Standalone Tomcat valve for WSO2 Identity Server 7.2.0 and 7.3.0 that logs the
+        request/response of configurable endpoints. Deployed as an OSGi bundle in
+        repository/components/dropins and wired in via the [catalina.valves.*.properties] section
+        of deployment.toml. Does not patch or replace any product component.
     </description>
 
     <properties>
-        <!-- Matches tomcat_9.0.102.wso2v1.jar shipped in IS 7.2.0. -->
-        <tomcat.version>9.0.102</tomcat.version>
+        <!--
+          Compile target. IS 7.2.0 ships tomcat_9.0.102.wso2v1.jar and IS 7.3.0 ships
+          tomcat-jdk21_9.0.118.wso2v1.jar; every Tomcat type this valve touches has an identical
+          signature in both, so one artifact runs on either. Built against the newer of the two.
+        -->
+        <tomcat.version>9.0.118</tomcat.version>
         <commons.logging.version>1.2</commons.logging.version>
         <maven.bundle.plugin.version>5.1.9</maven.bundle.plugin.version>
         <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
+        <!--
+          Java 11 bytecode: IS 7.2.0 runs on JDK 11 and IS 7.3.0 requires JDK 21, so this is the
+          highest level that both accept. Using release rather than source/target also keeps the
+          build clean on JDK 21, which deprecates -source 8.
+        -->
+        <maven.compiler.release>11</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -53,8 +63,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.compiler.plugin.version}</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <release>${maven.compiler.release}</release>
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
@@ -85,17 +94,26 @@
                         <_contract>!*</_contract>
                         <Import-Package>
                             <!--
-                              The tomcat-servlet-api_9.0.102.wso2v1 bundle exports javax.servlet at
-                              version 2.6.0, not 3.x/4.x. This is the same range that IS's own
-                              org.wso2.carbon.identity.cors.valve bundle imports.
+                              WSO2 versions the servlet API export differently per release:
+                              IS 7.2.0 (tomcat-servlet-api_9.0.102.wso2v1)       exports 2.6.0
+                              IS 7.3.0 (tomcat-servlet-api-jdk21_9.0.118.wso2v1) exports 3.1.0
+                              A range covering both is what makes one artifact work on either.
+                              Narrowing this to [2.6,3) makes the bundle unresolvable on 7.3.0.
                             -->
-                            javax.servlet; version="[2.6,3)",
+                            javax.servlet; version="[2.6,4)",
                             org.apache.catalina; version="[9.0,10)",
                             org.apache.catalina.connector; version="[9.0,10)",
                             org.apache.catalina.valves; version="[9.0,10)",
                             org.apache.coyote; version="[9.0,10)",
                             org.apache.tomcat.util.net; version="[9.0,10)",
+                            <!-- pax-logging-api exports 1.2.0 on IS 7.2.0 and 1.3.5 on IS 7.3.0. -->
                             org.apache.commons.logging; version="[1.2,2)",
+                            <!--
+                              java.* is supplied by the VM through boot delegation, never through
+                              Import-Package. Without this exclusion bnd lists java.io, java.nio
+                              and friends as (optional) imports, which is noise at best.
+                            -->
+                            !java.*,
                             *;resolution:=optional
                         </Import-Package>
                     </instructions>

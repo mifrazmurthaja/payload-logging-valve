@@ -1,4 +1,4 @@
-# Payload Logging Valve — WSO2 Identity Server 7.2.0
+# Payload Logging Valve — WSO2 Identity Server 7.3.0
 
 A standalone Tomcat valve that logs the full request (and optionally the response) of
 **configurable** endpoints.
@@ -21,10 +21,12 @@ cd payload-logging-valve
 mvn clean install
 ```
 
-Produces `target/org.wso2.support.tomcat.ext.payload.valve-1.0.0.jar`.
+Produces `target/org.wso2.support.tomcat.ext.payload.valve-1.1.0.jar`.
 
-Requires JDK 8 or 11 and Maven 3.6+. The Tomcat dependency is `provided` and pinned to
-`9.0.102`, matching `tomcat_9.0.102.wso2v1.jar` shipped in IS 7.2.0.
+Requires Maven 3.6+ and JDK 11 or newer — JDK 21 if you want to run the resulting bundle on IS
+7.3.0, which requires it. The build emits Java 11 bytecode (`maven.compiler.release`), the
+highest level both IS 7.2.0 (JDK 11) and IS 7.3.0 (JDK 21) accept. The Tomcat dependency is
+`provided` and pinned to `9.0.118`; it is only used to compile against.
 
 ## 2. Deploy
 
@@ -226,13 +228,15 @@ when you do.
 
 ### Verified on
 
-Built and run against a clean **WSO2 Identity Server 7.2.0** pack (Tomcat 9.0.102, carbon-kernel
-4.10.101, JDK 11). The bundle resolved from `dropins`, the Digester instantiated the valve and
-applied every attribute, and `POST /oauth2/token` was logged correctly for a `Content-Length`
-body, a body exceeding `maxBodySize` (truncation marker emitted) and a `Transfer-Encoding:
-chunked` body. `Authorization`, `password`, `client_secret` and `refresh_token` were redacted;
-`/oauth2/jwks` was not logged; and IS parsed the request body normally in every case, confirming
-the tee does not consume it.
+Built and run against clean **IS 7.2.0** (Tomcat 9.0.102, carbon-kernel 4.10.101, JDK 11) and
+**IS 7.3.0** (Tomcat 9.0.118, carbon-kernel 4.12.34, JDK 21) packs.
+
+On both: the bundle resolved from `dropins`, the Digester instantiated the valve and applied
+every attribute, and `POST /oauth2/token` was logged correctly for a `Content-Length` body, a
+body exceeding `maxBodySize` (truncation marker emitted) and a `Transfer-Encoding: chunked` body.
+`Authorization`, `password`, `client_secret` and `refresh_token` were redacted; `/oauth2/jwks`
+was not logged; and IS parsed the request body normally in every case, confirming the tee does
+not consume it.
 
 ## 8. Layout
 
